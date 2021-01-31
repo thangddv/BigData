@@ -1,0 +1,261 @@
+#  Author: Thangdv
+#  Date: 2020-12-24
+#
+#  https://github.com/
+#
+#  NOTE: Change volumes config to your_path
+#
+#  Project includes HDFS-YARN-HADOOP/NIFI/SPARK-ZEPPELIN/ELASTICSEARCH-KIBANA
+#  How to run: docker stack deploy -c docker-compose.yml cluser_name
+
+version: "3.7"
+services:
+    #-----------------Master node
+    hadoop-master:
+        container_name: hadoop-master
+        image: thangdv26/hadoop-master:latest
+        hostname: hadoop-master
+        deploy:
+            placement:
+                constraints: [node.hostname == thangdv]
+        ports:
+            - 9000:9000
+            - 8088:8088
+            - 8032:8032
+            - 9870:9870
+        volumes:
+            - data11:/dfs/
+        networks:
+            my-net:
+                ipv4_address: 10.10.0.1
+        extra_hosts:
+            - "hadoop-master:10.10.0.11"
+            - "hadoop-slave1:10.10.0.21"
+            - "hadoop-slave2:10.10.0.31"
+
+    nifi1:
+        image: thangdv26/nifi-scrapy:latest
+        hostname: nifi
+        ports:
+            - 28080:8080
+        deploy:
+            placement:
+                constraints: [node.hostname == thangdv]
+        networks:
+            my-net:
+                ipv4_address: 10.10.0.2
+        extra_hosts:
+            - "hadoop-master:10.10.0.1"
+
+    spark1:
+        image: thangdv26/spark-zeppelin:latest
+        hostname: spark
+        ports:
+            - 4040:4040
+            - 7077:7077
+            - 8080:8080
+            - 8085:18080
+        deploy:
+            placement:
+                constraints: [node.hostname == thangdv]
+        # volumes:
+        #     - data12:/spark
+        networks:
+            my-net:
+                ipv4_address: 10.10.0.3
+        extra_hosts:
+            - "hadoop-master:10.10.0.1"
+
+    elastic1:
+        image: docker.elastic.co/elasticsearch/elasticsearch:6.8.13
+        hostname: es01
+        environment:
+            - node.name=es01
+            - node.master=true
+            - cluster.name=cluster
+            - bootstrap.memory_lock=true
+            - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+        ports:
+            - 9200:9200
+        deploy:
+            mode: "replicated"
+            replicas: 1
+            resources:
+                limits:
+                    memory: 1G
+            placement:
+                constraints: [node.hostname == thangdv]
+        networks:
+            - my-net
+        volumes:
+            - data12:/usr/share/elasticsearch/data
+        extra_hosts:
+            - "es1:10.10.0.1"
+            - "es2:10.10.0.1"
+            - "es3:10.10.0.1"
+
+    kibana:
+        image: docker.elastic.co/kibana/kibana:6.8.13
+        hostname: kibana
+        ports:
+            - 5601:5601
+        deploy:
+            placement:
+                constraints: [node.hostname == thangdv]
+        environment:
+            ELASTICSEARCH_URL: http://0.0.0.0:9200
+            ELASTICSEARCH_HOSTS: http://0.0.0.0:9200
+        networks:
+            - my-net
+        extra_hosts:
+            - "es1:10.10.0.1"
+            - "es2:10.10.0.1"
+            - "es3:10.10.0.1"
+
+    #-----------------Slave1 node
+    hadoop-slave1:
+        container_name: hadoop-slave1
+        image: thangdv26/hadoop-master:latest
+        hostname: hadoop-slave1
+        deploy:
+            placement:
+                constraints: [node.hostname == pc1]
+        volumes:
+            - data21:/dfs
+        networks:
+            my-net:
+                ipv4_address: 10.10.0.11
+        extra_hosts:
+            - "hadoop-master:10.10.0.1"
+            - "hadoop-slave1:10.10.0.11"
+            - "hadoop-slave2:10.10.0.21"
+    spark2:
+        image: thangdv26/spark-zeppelin:latest
+        hostname: spark
+        ports:
+            - 4041:4040
+            - 7071:7077
+            - 8081:8080
+            - 8086:18080
+        deploy:
+            placement:
+                constraints: [node.hostname == pc1]
+        # volumes:
+        #     - data22:/spark
+        networks:
+            my-net:
+                ipv4_address: 10.10.0.3
+        extra_hosts:
+            - "hadoop-master:10.10.0.1"
+
+    elastic2:
+        image: docker.elastic.co/elasticsearch/elasticsearch:6.8.13
+        hostname: es02
+        environment:
+            - node.name=es02
+            - node.master=false
+            - cluster.name=cluster
+            - bootstrap.memory_lock=true
+            - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+            - "discovery.zen.ping.unicast.hosts=es01"
+        ports:
+            - 9201:9200
+        deploy:
+            mode: "replicated"
+            replicas: 1
+            resources:
+                limits:
+                    memory: 1G
+            placement:
+                constraints: [node.hostname == pc1]
+        networks:
+            - my-net
+        volumes:
+            - data23:/usr/share/elasticsearch/data
+        extra_hosts:
+            - "es1:10.10.0.1"
+            - "es2:10.10.0.1"
+            - "es3:10.10.0.1"
+
+    #-----------------Slave2 node
+    # hadoop-slave2:
+    #     container_name: hadoop-slave2
+    #     image: thangdv26/hadoop-master:latest
+    #     hostname: hadoop-slave2
+    #     deploy:
+    #         placement:
+    #             constraints: [node.hostname == pc2]
+    #     volumes:
+    #         - data31:/dfs/
+    #     networks:
+    #         my-net:
+    #             ipv4_address: 10.10.0.21
+    #     extra_hosts:
+    #         - "hadoop-master:10.10.0.1"
+    #         - "hadoop-slave1:10.10.0.11"
+    #         - "hadoop-slave2:10.10.0.21"
+
+networks:
+    my-net:
+        driver: overlay
+        ipam:
+            config:
+                - subnet: 10.10.0.0/24
+        attachable: true
+
+volumes:
+    data11:
+        driver: local
+        driver_opts:
+            type: none
+            device: /mnt/4E9A200D9A1FF067/University/20201/Project3/Final/data/hadoop
+            o: bind
+
+    data12:
+        driver: local
+        driver_opts:
+            type: none
+            device: /mnt/4E9A200D9A1FF067/University/20201/Project3/Final/data/spark
+            o: bind
+    data13:
+        driver: local
+        driver_opts:
+            type: none
+            device: /mnt/4E9A200D9A1FF067/University/20201/Project3/Final/data/es
+            o: bind
+    data21:
+        driver: local
+        driver_opts:
+            type: none
+            device: /data/hadoop
+            o: bind
+    data22:
+        driver: local
+        driver_opts:
+            type: none
+            device: /data/spark
+            o: bind
+    data23:
+        driver: local
+        driver_opts:
+            type: none
+            device: /data/es
+            o: bind
+
+    # data31:
+    #     driver: local
+    #     driver_opts:
+    #         type: none
+    #         device: /data/hadoop
+    #         o: bind
+
+    # data32:
+    #     driver: local
+    #     driver_opts:
+    #         type: none
+    #         device: /data/es
+    #         o: bind
