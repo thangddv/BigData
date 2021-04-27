@@ -1,96 +1,71 @@
-#  Extend from Hari Sekhon by Thangdv
-#  Author: Hari Sekhon
-#  Date: 2016-04-24 21:18:57 +0100 (Sun, 24 Apr 2016)
-#
-#  vim:ts=4:sts=4:sw=4:et
-#
-#  https://github.com/harisekhon/Dockerfiles
-#
-#  If you're using my code you're welcome to connect with me on LinkedIn and optionally send me feedback
-#
-#  https://www.linkedin.com/in/harisekhon
-#
+FROM ubuntu:18.04
 
-FROM harisekhon/centos-java:latest
-MAINTAINER Hari Sekhon (https://www.linkedin.com/in/harisekhon)
-
-ARG HADOOP_VERSION=3.2.1
-
-ARG TAR=hadoop-$HADOOP_VERSION.tar.gz
-
-ENV PATH $PATH:/hadoop/bin
-ENV PATH $PATH:/hadoop/sbin
+ARG HADOOP_VERSION=3.2.2
+ARG HADOOP_TAR=hadoop-$HADOOP_VERSION.tar.gz
+ARG HADOOP_URL=https://www.apache.org/dist/hadoop/common/hadoop-$HADOOP_VERSION/${HADOOP_TAR}
 
 LABEL Description="Hadoop Dev" \
       "Hadoop Version"="$HADOOP_VERSION"
 
 WORKDIR /
 
-RUN set -eux && \
-    yum install -y openssh-server openssh-clients tar which
+USER root
 
-RUN set -eux && \
-    yum install -y wget hostname && \
-    # --max-redirect - some apache mirrors redirect a couple times and give you the latest version instead
-    #                  but this breaks stuff later because the link will not point to the right dir
-    #                  (and is also the wrong version for the tag)
-    wget -t 10 --max-redirect 1 --retry-connrefused -O "$TAR" "http://www.apache.org/dyn/closer.lua?filename=hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-$HADOOP_VERSION.tar.gz&action=download" || \
-    wget -t 10 --max-redirect 1 --retry-connrefused -O "$TAR" "http://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-$HADOOP_VERSION.tar.gz" && \
-    tar zxf "$TAR" && \
-    # check tarball was extracted to the right place, helps ensure it's the right version and the link will work
-    test -d "hadoop-$HADOOP_VERSION" && \
-    ln -sv "hadoop-$HADOOP_VERSION" hadoop && \
-    mkdir /etc/hadoop && \
-    ln -s /hadoop/etc/hadoop /etc/hadoop/conf && \
-    rm -fv "$TAR" && \
-    { rm -rf hadoop/share/doc; : ; } && \
-    yum autoremove -y && \
-    # gets autoremoved, ensure it's added back as Hadoop scripts need it
-    yum install -y hostname && \
-    yum clean all && \
-    rm -rf /var/cache/yum
+# install supported tools
+RUN apt-get update && apt-get install -y --no-install-recommends\
+    curl \
+    net-tools \
+    nano \
+    ssh \
+    && rm -rf /var/lib/apt/lists/*
+    
+# install java-8
+RUN apt-get update && apt-get install -y openjdk-8-jdk
+ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+ENV PATH $PATH:$JAVA_HOME/bin
 
-COPY entrypoint.sh /
-COPY conf/core-site.xml /hadoop/etc/hadoop/
-COPY conf/hdfs-site.xml /hadoop/etc/hadoop/
-COPY conf/yarn-site.xml /hadoop/etc/hadoop/
-COPY conf/mapred-site.xml /hadoop/etc/hadoop/
-COPY conf/workers /hadoop/etc/hadoop/
-COPY profile.d/hadoop.sh /etc/profile.d/
-COPY ssh/config /root/.ssh/
+# install hadoop
+RUN set -x \
+    && curl -fSL "$HADOOP_URL" -o /tmp/${HADOOP_TAR} \
+    && tar -xvf /tmp/${HADOOP_TAR} -C /opt/ \
+    && rm /tmp/${HADOOP_TAR}*
 
-RUN set -eux && \
-    # Hadoop 1.x
-    #/hadoop/bin/hadoop namenode -format && \
-    # Hadoop 2.x
-    /hadoop/bin/hdfs namenode -format && \
-    groupadd hadoop && \
-    useradd -g hadoop hdfs && \
-    useradd -g hadoop yarn && \
-    mkdir -p /dfs/name && \
-    mkdir -p /dfs/data && \
-    mkdir -p /hadoop/logs && \
-    chown -R hdfs:hadoop /dfs/name && \
-    chown -R hdfs:hadoop /dfs/data && \
-    chgrp -R hadoop /hadoop/logs && \
-    chmod -R 0770 /hadoop/logs && \
-    mkdir -p /root/.ssh \
-          /home/hdfs/.ssh \
-          /home/yarn/.ssh && \
-    chown hdfs /home/hdfs/.ssh && \
-    chown yarn /home/yarn/.ssh && \
-    chmod 0700 /root/.ssh \
-               /home/hdfs/.ssh \
-               /home/yarn/.ssh
+RUN mv /opt/hadoop-${HADOOP_VERSION} /opt/hadoop \
+    && ln -s /opt/hadoop/etc/hadoop /etc/hadoop \
+    && mkdir /opt/hadoop/logs \
+    && mkdir -p /dfs/data /dfs/name
 
-ENV HDFS_NAMENODE_USER=hdfs
-ENV HDFS_SECONDARYNAMENODE_USER=hdfs
-ENV HDFS_DATANODE_USER=hdfs
-ENV YARN_RESOURCEMANAGER_USER=yarn
-ENV YARN_NODEMANAGER_USER=yarn
+# passwordless ssh
+ENV PDSH_RCMD_TYPE=ssh
+RUN rm -f /root/.ssh/id_rsa
+RUN ssh-keygen -q -N "" -t rsa -f /root/.ssh/id_rsa
+RUN cp /root/.ssh/id_rsa.pub /root/.ssh/authorized_keys
+RUN chmod 0600 ~/.ssh/authorized_keys
+RUN /etc/init.d/ssh start
+# set hadoop enviroment
+ENV HADOOP_HOME=/opt/hadoop
+ENV PATH $HADOOP_HOME/bin/:$HADOOP_HOME/sbin/:$PATH
+ENV HDFS_NAMENODE_USER=root
+ENV HDFS_DATANODE_USER=root
+ENV HDFS_SECONDARYNAMENODE_USER=root
+ENV YARN_RESOURCEMANAGER_USER=root
+ENV YARN_NODEMANAGER_USER=root
+# add JAVA_HOME to hadoop .env
+RUN sed -i '/^# export JAVA_HOME/ s:.*:export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64:' $HADOOP_HOME/etc/hadoop/hadoop-env.sh
 
-#EXPOSE 8020 8042 8088 9000 10020 19888 50010 50020 50070 50075 50090
-# Hadoop 3.0 changed ports :-(
-EXPOSE 8088 9870 9000 8032 8030 9864 9866 19888
+# add config
+ADD conf/core-site.xml $HADOOP_HOME/etc/hadoop/
+ADD conf/hdfs-site.xml $HADOOP_HOME/etc/hadoop/
+ADD conf/yarn-site.xml $HADOOP_HOME/etc/hadoop/
+ADD conf/mapred-site.xml $HADOOP_HOME/etc/hadoop/
+ADD conf/workers $HADOOP_HOME/etc/hadoop/
 
-CMD ["/entrypoint.sh"]
+RUN sed -i ~/.profile -e 's/mesg n || true/tty -s \&\& mesg n/g'
+
+EXPOSE  50070 50075 8042 8088 9000 9870
+
+ADD entrypoint.sh /entrypoint.sh
+
+RUN chmod a+x /entrypoint.sh
+
+ENTRYPOINT [ "/entrypoint.sh" ]
