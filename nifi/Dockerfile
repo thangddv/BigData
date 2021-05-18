@@ -35,10 +35,14 @@ RUN apt-get update && apt-get install -y gcc \
 	
 RUN pip3 install --upgrade pip \
     && pip3 install scrapy
-    
+
 ADD Investing-Crawler /opt/nifi
 ADD conf /opt/nifi
 
 EXPOSE 8080
 
-CMD ["bash", "-c", "nifi.sh start; tail -f /dev/null /opt/nifi/log*/*"]
+ADD entrypoint.sh /entrypoint.sh
+
+RUN chmod a+x /entrypoint.sh
+
+ENTRYPOINT [ "/entrypoint.sh" ]

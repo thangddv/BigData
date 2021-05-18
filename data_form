@@ -21,4 +21,24 @@ company_info: {
 }
 
 
+{
+	"company_id": 1,
+	"company_name": "Citigroup Inc",
+	"short_name": "Citigroup",
+	"country": "Viet Nam",
+	"avg_volumn": 26.07,
+	"market_cap": 101.31,
+	"revenue": 43.41,
+	"p_e_ratio": 9.51,
+	"price_date": [
+		"date": 2021-05-14,
+		"price": 157.74, 
+		"open_price": 156.33, 
+		"high": 158.47, 
+		"low": 154.52, 
+		"vol": 8995560, 
+		"change": 0.41,
+	]
+}
+
 

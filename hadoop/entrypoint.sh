@@ -5,7 +5,9 @@ set -euo pipefail
 
 /etc/init.d/ssh start
 # hdfs namenode -format
-# start-dfs.sh
-cd /opt/hadoop
 
+cd /opt/hadoop
+start-all.sh
+
+tail -f /dev/null
 exec $@
