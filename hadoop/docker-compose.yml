@@ -1,36 +1,17 @@
-#  vim:ts=2:sts=2:sw=2:et
-#
-#  Author: Hari Sekhon
-#  Date: 2016-12-09 21:25:07 +0000 (Fri, 09 Dec 2016)
-#
-#  https://github.com/harisekhon/Dockerfiles
-#
-#  License: see accompanying Hari Sekhon LICENSE file
-#
-#  If you're using my code you're welcome to connect with me on LinkedIn and optionally send me feedback to help steer this or other code I publish
-#
-#  https://www.linkedin.com/in/harisekhon
-#
-
 version: '3.7'
 services:
-  hadoop:
-    container_name: hadoop-master
-    build:
-      context: .
-      dockerfile: Dockerfile
+  hadoop-master:
+    image: hadoop
     hostname: hadoop-master
     ports:
-      #- 8020:8020
-      - 8042:8042
+      - 9000:9000
       - 8088:8088
-      #- 9000:9000
-      - 9864:9864
+      - 8032:8032
       - 9870:9870
-      #- 10020:10020
-      - 19888:19888
-      - 50010:50010
-      - 50020:50020
-      - 50070:50070
-      - 50075:50075
-      - 50090:50090
+    volumes: 
+      - type: bind
+        source: /mnt/4E9A200D9A1FF067/University/20202/GR/data/hadoop/name
+        target: /dfs/name
+      - type: bind
+        source: /mnt/4E9A200D9A1FF067/University/20202/GR/data/hadoop/data
+        target: /dfs/data

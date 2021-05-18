@@ -1,65 +1,58 @@
-#
-#  Author: Hari Sekhon
-#  Date: 2016-01-16 09:58:07 +0000 (Sat, 16 Jan 2016)
-#
-#  vim:ts=4:sts=4:sw=4:et
-#
-#  https://github.com/harisekhon/Dockerfiles
-#
-#  If you're using my code you're welcome to connect with me on LinkedIn and optionally send me feedback to help improve or steer this or other code I publish
-#
-#  https://www.linkedin.com/in/harisekhon
-#
+FROM ubuntu:18.04
 
-#FROM harisekhon/centos-java:jre7
-# > 100MB smaller than centos
-FROM alpine:latest
-MAINTAINER Hari Sekhon (https://www.linkedin.com/in/harisekhon)
-
-ARG SPARK_VERSION=3.0.1
+ARG SPARK_VERSION=3.1.1
 ARG HADOOP_VERSION=3.2
 ARG ZEPPELIN_VERSION=0.9.0
-ARG TAR=spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
-ARG Z_TAR=zeppelin-${ZEPPELIN_VERSION}-bin-all.tgz
-
-ENV PATH $PATH:/spark/bin
-ENV ZEPPELIN_PORT 18080
+ARG SPARK_TAR=spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
+ARG SPARK_URL=https://mirror.downloadvn.com/apache/spark/spark-${SPARK_VERSION}/${SPARK_TAR}
+ARG ZEPPELIN_TAR=zeppelin-${ZEPPELIN_VERSION}-bin-all.tgz
+ARG ZEPPELIN_URL=https://mirror.downloadvn.com/apache/zeppelin/zeppelin-${ZEPPELIN_VERSION}/${ZEPPELIN_TAR}
 
 LABEL Description="Apache Spark" \
     "Spark Version"="$SPARK_VERSION"
 
-#COPY spark-$SPARK_VERSION-bin-hadoop$HADOOP_VERSION /spark
-#ADD "http://d3kbcqa49mib13.cloudfront.net/${TAR}"
-
 WORKDIR /
 
-RUN set -eux && \
-    apk add --no-cache bash openjdk8-jre-base wget tar && \
-    python3 && \ 
-    ln -sf python3 /usr/bin/python
-RUN python3 -m ensurepip
-RUN pip3 install --no-cache --upgrade pip setuptools
-    
-RUN wget -t 100 --retry-connrefused -O "$Z_TAR" "https://downloads.apache.org/zeppelin/zeppelin-${ZEPPELIN_VERSION}/${Z_TAR}" && \
-    tar zxf "${Z_TAR}" && \
-    rm -fv "${Z_TAR}" && \
-    ln -s "zeppelin-${ZEPPELIN_VERSION}-bin-all" zeppelin
-    
-RUN wget -t 100 --retry-connrefused -O "$TAR" "https://downloads.apache.org/spark/spark-${SPARK_VERSION}/${TAR}" && \
-    tar zxf "${TAR}" && \
-    rm -fv "${TAR}" && \
-    ln -s "spark-$SPARK_VERSION-bin-hadoop$HADOOP_VERSION" spark
-    
-RUN apk del wget tar
+USER root
 
-RUN mkdir /var/run/sshd && chmod 0755 /var/run/sshd && \
-    cp -v /spark/conf/spark-env.sh.template /spark/conf/spark-env.sh
+# install supported tools and java-8
+RUN apt-get update && apt-get install -y --no-install-recommends\
+    curl \
+    nano \
+    ssh \
+    openjdk-8-jdk \
+    && rm -rf /var/lib/apt/lists/*
+ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+ENV PATH $PATH:$JAVA_HOME/bin
 
-COPY entrypoint.sh /
-COPY zeppelin-env.sh /zeppelin/conf/
+# passwordless ssh
+ENV PDSH_RCMD_TYPE=ssh
+RUN rm -f /root/.ssh/id_rsa
+RUN ssh-keygen -q -N "" -t rsa -f /root/.ssh/id_rsa
+RUN cp /root/.ssh/id_rsa.pub /root/.ssh/authorized_keys
+RUN chmod 0600 ~/.ssh/authorized_keys
+RUN /etc/init.d/ssh start
 
-COPY conf_hdfs /spark
+RUN set -x \
+    && curl -fSL "$SPARK_URL" -o /tmp/${SPARK_TAR} \
+    && tar -xvf /tmp/${SPARK_TAR} -C /opt/ \
+    && rm /tmp/${SPARK_TAR}*
 
-EXPOSE 4040 7077 8080 8081 18080
+ENV PATH $PATH:/opt/spark/bin
 
-CMD ["/entrypoint.sh"]
+#install python
+RUN apt-get update && apt-get install -y gcc \
+    python3.8 \
+    python3-pip
+
+RUN pip3 install --upgrade pip \
+    && pip3 install pyspark
+
+RUN mv /opt/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /opt/spark
+ADD conf_hdfs /opt/spark/conf
+
+EXPOSE 4040 7077 8080 8081 18080 34047
+
+ADD entrypoint.sh /entrypoint.sh
+RUN chmod a+x /entrypoint.sh
+ENTRYPOINT [ "/entrypoint.sh" ]

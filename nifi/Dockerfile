@@ -1,70 +1,48 @@
-#
-#  Author: Hari Sekhon
-#  Date: 2016-01-16 09:58:07 +0000 (Sat, 16 Jan 2016)
-#
-#  vim:ts=4:sts=4:sw=4:et
-#
-#  https://github.com/harisekhon/Dockerfiles
-#
-#  If you're using my code you're welcome to connect with me on LinkedIn and optionally send me feedback to help improve or steer this or other code I publish
-#
-#  https://www.linkedin.com/in/harisekhon
-#
+FROM ubuntu:18.04
 
-FROM alpine:latest
-MAINTAINER Hari Sekhon (https://www.linkedin.com/in/harisekhon)
-
-ENV PATH $PATH:/nifi/bin
-
-ARG NIFI_VERSION=1.12.0
-
-ARG TAR=nifi-${NIFI_VERSION}-bin.tar.gz
+ARG NIFI_VERSION=1.13.2
+ARG NIFI_TAR=nifi-${NIFI_VERSION}-bin.tar.gz
+ARG NIFI_URL=https://mirror.downloadvn.com/apache/nifi/${NIFI_VERSION}/${NIFI_TAR}
 
 LABEL Description="Nifi" \
       "Nifi Version"="$NIFI_VERSION"
 
 WORKDIR /
 
-RUN set -eux && \
-    apk add --no-cache bash openjdk8-jre-base
+USER root
 
-RUN set -eux && \
-    apk add --no-cache wget tar && \
-    url="http://www.apache.org/dyn/closer.lua?filename=nifi/${NIFI_VERSION}/${TAR}&action=download"; \
-    url_archive="http://archive.apache.org/dist/nifi/${NIFI_VERSION}/${TAR}"; \
-    # --max-redirect - some apache mirrors redirect a couple times and give you the latest version instead
-    #                  but this breaks stuff later because the link will not point to the right dir
-    #                  (and is also the wrong version for the tag)
-    wget -t 10 --max-redirect 1 --retry-connrefused -O "${TAR}" "$url" || \
-    wget -t 10 --max-redirect 1 --retry-connrefused -O "${TAR}" "$url_archive" && \
-    tar zxf "${TAR}" && \
-    # check tarball was extracted to the right place, helps ensure it's the right version and the link will work
-    test -d "nifi-$NIFI_VERSION" && \
-    ln -sv "nifi-${NIFI_VERSION}" nifi && \
-    rm -fv  "${TAR}"
-    #{ rm -rf nifi/docs; : ; } && \
-RUN apk update && \
-    apk add --no-cache \
-    gcc \
-    linux-headers \
-    musl-dev \
-    libffi-dev \
-    libxml2-dev \
-    libxslt-dev \
-    openssl-dev \
-    python3-dev \
-    python3
-    
-RUN python3 -m ensurepip
+# install supported tools and java-8
+RUN apt-get update && apt-get install -y --no-install-recommends\
+    curl \
+    nano \
+    openjdk-8-jdk \
+    && rm -rf /var/lib/apt/lists/*
+ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+ENV PATH $PATH:$JAVA_HOME/bin
+
+# install nifi
+RUN set -eux \
+    && curl -fSL "$NIFI_URL" -o /tmp/${NIFI_TAR}} \
+    && tar -xvf /tmp/${NIFI_TAR}} -C /opt/ \
+    && mv /opt/nifi-${NIFI_VERSION} /opt/nifi \
+    && rm /tmp/${NIFI_TAR}}*
+ENV PATH $PATH:/opt/nifi/bin
+
+#install python
+RUN apt-get update && apt-get install -y gcc \
+    python3.8 \
+    python3-pip
 	
-RUN pip3 install --upgrade pip
-RUN pip3 install scrapy
+RUN pip3 install --upgrade pip \
+    && pip3 install scrapy
 
-RUN apk del tar wget
-    
-ADD Investing-Crawler /nifi
-ADD conf	/nifi
+ADD Investing-Crawler /opt/nifi
+ADD conf /opt/nifi
 
 EXPOSE 8080
 
-CMD ["bash", "-c", "nifi.sh start; tail -f /dev/null /nifi/log*/*"]
+ADD entrypoint.sh /entrypoint.sh
+
+RUN chmod a+x /entrypoint.sh
+
+ENTRYPOINT [ "/entrypoint.sh" ]
