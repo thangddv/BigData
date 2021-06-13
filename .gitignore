@@ -1,2 +1,5 @@
 data/**
 *.docx
+*.sh
+fontend/node_modules/*
+fontend/package-lock.json

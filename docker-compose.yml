@@ -10,195 +10,178 @@
 
 version: "3.7"
 services:
-    #-----------------Master node
-    hadoop-master:
-        image: thangdv26/hadoop:latest
-        hostname: hadoop-master
-        deploy:
-            placement:
-                constraints: [node.hostname == thangdv]
-        ports:
-            - 9000:9000
-            - 8088:8088
-            - 8032:8032
-            - 9870:9870
-        volumes:
-            - hadoop-master-namenode:/dfs/name
-            - hadoop-master-datanode:/dfs/data
-        # networks:
-        #     my-net:
-        #         ipv4_address: 10.10.0.1
-        extra_hosts:
-            - "hadoop-slave:10.0.0.1"
-            - "spark-master:10.0.0.2"
+  #-----------------Master node
+  hadoop-master:
+    image: thangdv26/hadoop:latest
+    hostname: hadoop-master
+    deploy:
+      placement:
+        constraints: [node.hostname == thangdv]
+    ports:
+      - 9000:9000
+      - 8088:8088
+      - 8032:8032
+      - 9870:9870
+    volumes:
+      - hadoop-master-namenode:/dfs/name
+      - hadoop-master-datanode:/dfs/data
+    # networks:
+    #     my-net:
+    #         ipv4_address: 10.10.0.1
+    extra_hosts:
+      - "hadoop-slave:10.0.0.1"
+      - "spark-master:10.0.0.2"
 
-    nifi:
-        image: thangdv26/nifi-scrapy:latest
-        hostname: nifi
-        deploy:
-            placement:
-                constraints: [node.hostname == thangdv]
-        ports:
-            - 28080:8080
-        volumes:
-            - nifi-data:/opt/nifi/logs
-        # networks:
-        #     my-net:
-        #         ipv4_address: 10.10.0.2
-        extra_hosts:
-            - "hadoop-master:10.10.0.1"
+  nifi:
+    image: thangdv26/nifi-scrapy:latest
+    hostname: nifi
+    deploy:
+      placement:
+        constraints: [node.hostname == thangdv]
+    ports:
+      - 28080:8080
+    volumes:
+      - nifi-data:/opt/nifi/logs
+    # networks:
+    #     my-net:
+    #         ipv4_address: 10.10.0.2
+    extra_hosts:
+      - "hadoop-master:10.10.0.1"
 
-    spark-master:
-        image: thangdv26/spark:latest
-        hostname: spark-master
-        ports:
-            - 4040:4040
-            - 7077:7077
-            - 8080:8080
-            - 18080:18080
-        deploy:
-            placement:
-                constraints: [node.hostname == thangdv]
-        extra_hosts:
-            - "hadoop-master:10.10.0.1"
-            - "spark-worker:10.10.0.1"
-            - "host.docker.internal:host-gateway"
+  spark-master:
+    image: thangdv26/spark:latest
+    hostname: spark-master
+    ports:
+      - 4040:4040
+      - 7077:7077
+      - 8080:8080
+      - 18080:18080
+    deploy:
+      placement:
+        constraints: [node.hostname == thangdv]
+    extra_hosts:
+      - "hadoop-master:10.10.0.1"
+      - "spark-worker:10.10.0.1"
+      - "host.docker.internal:host-gateway"
 
-    # elastic1:
-    #     image: elasticsearch:7.12.1
-    #     hostname: es01
-    #     environment:
-    #         - node.name=es01
-    #         - node.master=true
-    #         - cluster.name=cluster
-    #         - discovery.seed_hosts=es02
-    #         - bootstrap.memory_lock=true
-    #         - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    #     ulimits:
-    #         memlock:
-    #             soft: -1
-    #             hard: -1
-    #     ports:
-    #         - 9200:9200
-    #     deploy:
-    #         placement:
-    #             constraints: [node.hostname == thangdv]
-    #     # networks:
-    #     #     - my-net
-    #     volumes:
-    #         - elastic-1-data:/usr/share/elasticsearch/data
-    #     extra_hosts:
-    #         - "es02:10.10.0.1"
+  # elastic1:
+  #     image: elasticsearch:7.12.1
+  #     hostname: es01
+  #     environment:
+  #         - node.name=es01
+  #         - node.master=true
+  #         - cluster.name=cluster
+  #         - discovery.seed_hosts=es02
+  #         - bootstrap.memory_lock=true
+  #         - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  #     ulimits:
+  #         memlock:
+  #             soft: -1
+  #             hard: -1
+  #     ports:
+  #         - 9200:9200
+  #     deploy:
+  #         placement:
+  #             constraints: [node.hostname == thangdv]
+  #     # networks:
+  #     #     - my-net
+  #     volumes:
+  #         - elastic-1-data:/usr/share/elasticsearch/data
+  #     extra_hosts:
+  #         - "es02:10.10.0.1"
 
-    # kibana:
-    #     image: kibana:7.12.1
-    #     hostname: kibana
-    #     ports:
-    #         - 5601:5601
-    #     deploy:
-    #         placement:
-    #             constraints: [node.hostname == thangdv]
-    #     environment:
-    #         ELASTICSEARCH_URL: http://es01:9200
-    #         ELASTICSEARCH_HOSTS: http://es01:9200
-    #     # networks:
-    #     #     - my-net
-    #     extra_hosts:
-    #         - "es01:10.10.0.1"
-    #         - "es02:10.10.0.1"
+  #-----------------Slave1 node
+  hadoop-slave:
+    image: thangdv26/hadoop:latest
+    hostname: hadoop-slave
+    deploy:
+      placement:
+        constraints: [node.hostname == pc1]
+    volumes:
+      - hadoop-slave-datanode:/dfs/data
+    # networks:
+    #     my-net:
+    #         ipv4_address: 10.10.0.11
+    extra_hosts:
+      - "hadoop-master:10.10.0.1"
+      - "spark-master: 10.0.0.2"
 
-    #-----------------Slave1 node
-    hadoop-slave:
-        image: thangdv26/hadoop:latest
-        hostname: hadoop-slave
-        deploy:
-            placement:
-                constraints: [node.hostname == pc1]
-        volumes:
-            - hadoop-slave-datanode:/dfs/data
-        # networks:
-        #     my-net:
-        #         ipv4_address: 10.10.0.11
-        extra_hosts:
-            - "hadoop-master:10.10.0.1"
-            - "spark-master: 10.0.0.2"
+  spark-worker:
+    image: thangdv26/spark:latest
+    hostname: spark-worker
+    # ports:
+    #     - 4041:4040
+    #     - 7071:7077
+    #     - 8081:8080
+    #     - 8086:18080
+    deploy:
+      placement:
+        constraints: [node.hostname == pc1]
+    # networks:
+    #     my-net:
+    #         ipv4_address: 10.10.0.3
+    extra_hosts:
+      - "spark-master:10.10.0.1"
 
-    spark-worker:
-        image: thangdv26/spark:latest
-        hostname: spark-worker
-        # ports:
-        #     - 4041:4040
-        #     - 7071:7077
-        #     - 8081:8080
-        #     - 8086:18080
-        deploy:
-            placement:
-                constraints: [node.hostname == pc1]
-        # networks:
-        #     my-net:
-        #         ipv4_address: 10.10.0.3
-        extra_hosts:
-            - "spark-master:10.10.0.1"
-
-    # elastic2:
-    #     image: elasticsearch:7.12.1
-    #     hostname: es02
-    #     environment:
-    #         - node.name=es02
-    #         - cluster.name=cluster
-    #         - discovery.seed_hosts=es01
-    #         - bootstrap.memory_lock=true
-    #         - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    #     ulimits:
-    #         memlock:
-    #             soft: -1
-    #             hard: -1
-    #     ports:
-    #         - 9201:9200
-    #     deploy:
-    #         placement:
-    #             constraints: [node.hostname == pc1]
-    #     # networks:
-    #     #     - my-net
-    #     volumes:
-    #         - elastic-2-data:/usr/share/elasticsearch/data
-    #     extra_hosts:
-    #         - "es01:10.10.0.1"
+  # elastic2:
+  #     image: elasticsearch:7.12.1
+  #     hostname: es02
+  #     environment:
+  #         - node.name=es02
+  #         - cluster.name=cluster
+  #         - discovery.seed_hosts=es01
+  #         - bootstrap.memory_lock=true
+  #         - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  #     ulimits:
+  #         memlock:
+  #             soft: -1
+  #             hard: -1
+  #     ports:
+  #         - 9201:9200
+  #     deploy:
+  #         placement:
+  #             constraints: [node.hostname == pc1]
+  #     # networks:
+  #     #     - my-net
+  #     volumes:
+  #         - elastic-2-data:/usr/share/elasticsearch/data
+  #     extra_hosts:
+  #         - "es01:10.10.0.1"
 
 volumes:
-    hadoop-master-namenode:
-        driver: local
-        driver_opts:
-            type: bind
-            device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/hadoop/name
-            o: bind
-    hadoop-master-datanode:
-        driver: local
-        driver_opts:
-            type: bind
-            device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/hadoop/data
-            o: bind
-    hadoop-slave-datanode:
-        driver: local
-        driver_opts:
-            type: bind
-            device: /opt/data/hadoop/data
-            o: bind
-    nifi-data:
-        driver: local
-        driver_opts:
-            type: bind
-            device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/nifi/logs
-            o: bind        
-    elastic-1-data:
-        driver: local
-        driver_opts:
-            type: bind
-            device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/es
-            o: bind     
-    elastic-2-data: 
-        driver: local
-        driver_opts:
-            type: bind
-            device: /opt/data/es
-            o: bind
+  hadoop-master-namenode:
+    driver: local
+    driver_opts:
+      type: bind
+      device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/hadoop/name
+      o: bind
+  hadoop-master-datanode:
+    driver: local
+    driver_opts:
+      type: bind
+      device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/hadoop/data
+      o: bind
+  hadoop-slave-datanode:
+    driver: local
+    driver_opts:
+      type: bind
+      device: /opt/data/hadoop/data
+      o: bind
+  nifi-data:
+    driver: local
+    driver_opts:
+      type: bind
+      device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/nifi/logs
+      o: bind
+  elastic-1-data:
+    driver: local
+    driver_opts:
+      type: bind
+      device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/es
+      o: bind
+  elastic-2-data:
+    driver: local
+    driver_opts:
+      type: bind
+      device: /opt/data/es
+      o: bind

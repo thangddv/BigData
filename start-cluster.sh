@@ -6,6 +6,4 @@ sudo sysctl -w vm.max_map_count=262144
 
 docker stack deploy -c docker-compose.yml cluster
 
-/opt/elasticsearch/bin/elasticsearch &
-
-/opt/kibana/bin/kibana &
+/opt/elasticsearch/bin/elasticsearch

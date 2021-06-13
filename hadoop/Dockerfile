@@ -5,7 +5,7 @@ ARG HADOOP_TAR=hadoop-$HADOOP_VERSION.tar.gz
 ARG HADOOP_URL=https://www.apache.org/dist/hadoop/common/hadoop-$HADOOP_VERSION/${HADOOP_TAR}
 
 LABEL Description="Hadoop Dev" \
-      "Hadoop Version"="$HADOOP_VERSION"
+    "Hadoop Version"="$HADOOP_VERSION"
 
 WORKDIR /
 
@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends\
     nano \
     ssh \
     && rm -rf /var/lib/apt/lists/*
-    
+
 # install java-8
 RUN apt-get update && apt-get install -y openjdk-8-jdk
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
