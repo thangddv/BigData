@@ -37,8 +37,8 @@ const bbAppearance = {
   fill: "#4682B4",
 };
 
-const dateFormat = timeFormat("%Y-%m-%d");
-const numberFormat = format(".2f");
+const dateFormat = timeFormat("%d-%m-%Y");
+const numberFormat = format(",.0f"); // ,.1f
 
 function tooltipContent(ys) {
   return ({ currentItem, xAccessor }) => {
@@ -75,9 +75,19 @@ function tooltipContent(ys) {
 }
 
 class CandleStickChartWithDarkTheme extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+
   render() {
-    const height = 850; //450
-    const { type, data: initialData, width, ratio } = this.props;
+    const {
+      height,
+      width,
+      numCol,
+      type,
+      data: initialData,
+      ratio,
+    } = this.props;
 
     const margin = { left: 70, right: 70, top: 20, bottom: 30 };
 
@@ -91,7 +101,6 @@ class CandleStickChartWithDarkTheme extends React.Component {
     const xGrid = showGrid
       ? { innerTickSize: -1 * gridHeight, tickStrokeOpacity: 0.2 }
       : {};
-    console.log(width);
 
     const ema20 = ema()
       .id(0)
@@ -128,8 +137,8 @@ class CandleStickChartWithDarkTheme extends React.Component {
 
     return (
       <ChartCanvas
-        height={850} //450
-        width={width} // /2
+        height={height}
+        width={width / numCol}
         ratio={ratio}
         margin={margin}
         type={type}
@@ -142,7 +151,7 @@ class CandleStickChartWithDarkTheme extends React.Component {
       >
         <Chart
           id={1}
-          height={800} //400,800
+          height={height - 50} //400,800
           yExtents={[
             (d) => [d.high, d.low],
             bb.accessor(),
@@ -158,6 +167,7 @@ class CandleStickChartWithDarkTheme extends React.Component {
             {...yGrid}
             inverted={true}
             tickStroke="#FFFFFF"
+            tickFormat={numberFormat}
           />
           <XAxis
             axisAt="bottom"
@@ -170,12 +180,12 @@ class CandleStickChartWithDarkTheme extends React.Component {
           <MouseCoordinateY
             at="right"
             orient="right"
-            displayFormat={format(".2f")}
+            displayFormat={numberFormat}
           />
           <MouseCoordinateX
             at="bottom"
             orient="bottom"
-            displayFormat={timeFormat("%Y-%m-%d")}
+            displayFormat={dateFormat}
           />
 
           <CandlestickSeries
@@ -204,6 +214,7 @@ class CandleStickChartWithDarkTheme extends React.Component {
             edgeAt="right"
             yAccessor={(d) => d.close}
             fill={(d) => (d.close > d.open ? "#6BA583" : "#DB0000")}
+            displayFormat={numberFormat}
           />
 
           {/* Text Header: Info about company */}

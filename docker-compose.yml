@@ -23,11 +23,7 @@ services:
       - 8032:8032
       - 9870:9870
     volumes:
-      - hadoop-master-namenode:/dfs/name
-      - hadoop-master-datanode:/dfs/data
-    # networks:
-    #     my-net:
-    #         ipv4_address: 10.10.0.1
+      - hadoop-master:/dfs
     extra_hosts:
       - "hadoop-slave:10.0.0.1"
       - "spark-master:10.0.0.2"
@@ -41,10 +37,9 @@ services:
     ports:
       - 28080:8080
     volumes:
-      - nifi-data:/opt/nifi/logs
-    # networks:
-    #     my-net:
-    #         ipv4_address: 10.10.0.2
+      - nifi-conf:/opt/nifi/conf
+      - nifi-log:/opt/nifi/logs
+      - nifi-crawler:/opt/nifi/Investing-Crawler
     extra_hosts:
       - "hadoop-master:10.10.0.1"
 
@@ -98,10 +93,7 @@ services:
       placement:
         constraints: [node.hostname == pc1]
     volumes:
-      - hadoop-slave-datanode:/dfs/data
-    # networks:
-    #     my-net:
-    #         ipv4_address: 10.10.0.11
+      - hadoop-slave:/dfs
     extra_hosts:
       - "hadoop-master:10.10.0.1"
       - "spark-master: 10.0.0.2"
@@ -109,17 +101,9 @@ services:
   spark-worker:
     image: thangdv26/spark:latest
     hostname: spark-worker
-    # ports:
-    #     - 4041:4040
-    #     - 7071:7077
-    #     - 8081:8080
-    #     - 8086:18080
     deploy:
       placement:
         constraints: [node.hostname == pc1]
-    # networks:
-    #     my-net:
-    #         ipv4_address: 10.10.0.3
     extra_hosts:
       - "spark-master:10.10.0.1"
 
@@ -149,39 +133,33 @@ services:
   #         - "es01:10.10.0.1"
 
 volumes:
-  hadoop-master-namenode:
+  hadoop-master:
     driver: local
     driver_opts:
       type: bind
-      device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/hadoop/name
+      device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/hadoop
       o: bind
-  hadoop-master-datanode:
-    driver: local
-    driver_opts:
-      type: bind
-      device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/hadoop/data
-      o: bind
-  hadoop-slave-datanode:
+  hadoop-slave:
     driver: local
     driver_opts:
       type: bind
       device: /opt/data/hadoop/data
       o: bind
-  nifi-data:
+  nifi-crawler:
+    driver: local
+    driver_opts:
+      type: bind
+      device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/nifi/crawler
+      o: bind
+  nifi-log:
     driver: local
     driver_opts:
       type: bind
       device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/nifi/logs
       o: bind
-  elastic-1-data:
+  nifi-conf:
     driver: local
     driver_opts:
       type: bind
-      device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/es
-      o: bind
-  elastic-2-data:
-    driver: local
-    driver_opts:
-      type: bind
-      device: /opt/data/es
+      device: /mnt/4E9A200D9A1FF067/University/20202/GR/data/nifi/conf
       o: bind

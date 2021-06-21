@@ -1,5 +1,7 @@
 data/**
 *.docx
+*.pdf
 *.sh
 fontend/node_modules/*
 fontend/package-lock.json
+*.pyc

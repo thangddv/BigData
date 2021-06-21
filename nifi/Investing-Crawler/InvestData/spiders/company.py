@@ -8,6 +8,10 @@ import urllib.parse
 class CompanySpider(scrapy.Spider):
     name = 'company'
     allowed_domains = ['investing.com']
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36',
+        'X-Requested-With': 'XMLHttpRequest',
+    }
     url = 'https://www.investing.com/equities/StocksFilter?'
     custom_settings = {
         'ITEM_PIPELINES': {
@@ -27,13 +31,10 @@ class CompanySpider(scrapy.Spider):
             lines = f.readlines()
 
         for line in lines:
-            yield json.loads(line)['smlId'],
+            yield json.loads(line)['country_id'],
 
     def start_requests(self):
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36',
-            'X-Requested-With': 'XMLHttpRequest',
-        }
+
         params = {
             'noconstruct': '1',
             'smlID': None,
@@ -41,27 +42,44 @@ class CompanySpider(scrapy.Spider):
             'index_id': 'all',
         }
 
-        for smlId in self.feed():
-            smlId = list(smlId)
-            smlId = ''.join(smlId)
-            smlId.replace("'", "")
-            smlId.replace(",", "")
-            print(smlId)
-            params['smlID'] = smlId
+        for country_id in self.feed():
+            country_id = list(country_id)
+            country_id = ''.join(country_id)
+            country_id.replace("'", "")
+            country_id.replace(",", "")
+            params['smlID'] = country_id
             params_str = urllib.parse.urlencode(params)
-            yield scrapy.FormRequest(url=self.url + params_str, callback=self.parse, headers=headers, cb_kwargs={'smlId': smlId})
+            yield scrapy.FormRequest(url=self.url + params_str, callback=self.parse, headers=self.headers, cb_kwargs={'smlId': country_id})
 
     def parse(self, response, smlId):
-        item = CompanyItem()
+
         for data in response.xpath("//table[@id='fundamental']/tbody/tr"):
+            item = CompanyItem()
             item['name'] = data.xpath('./td[2]/span').attrib['data-name']
-            item['currId'] = data.xpath('./td[2]/span').attrib['data-id']
-            item['short_name'] = data.xpath('./td[2]/a/text()').get()
-            item['avg_volume'] = data.xpath('./td[3]/text()').get()
+            item['company_id'] = data.xpath('./td[2]/span').attrib['data-id']
+            item['volume_3m'] = data.xpath('./td[3]/text()').get()
             item['market_cap'] = data.xpath('./td[4]/text()').get()
             item['revenue'] = data.xpath('./td[5]/text()').get()
             item['p_e_ratio'] = data.xpath('./td[6]/text()').get()
             item['beta'] = data.xpath('./td[7]/text()').get()
-            item['smlId'] = smlId
+            item['country'] = data.xpath('./td[1]/span').attrib['title']
+            url = 'https://www.investing.com'
+            url += data.xpath('./td[2]/a').attrib['href']
+            req = scrapy.Request(
+                url, callback=self.parse2, headers=self.headers)
+            req.cb_kwargs['item'] = item
+            yield req
 
-            yield item
+    def parse2(self, response, item):
+        name = response.xpath("//h1/text()").get()
+        item['code'] = name[name.find("(")+1:name.find(")")]
+        item["volume"] = response.xpath(
+            "//dl[@data-test='key-info']/div[7]/dd/span/span[1]/text()").get()
+        item["change_per_year"] = response.xpath(
+            "//dl[@data-test='key-info']/div[13]/dd/span/span[1]/text()").get()
+        item["shares_outstanding"] = response.xpath(
+            "//dl[@data-test='key-info']/div[14]/dd/span/span[1]/text()").get()
+        item["eps"] = response.xpath(
+            "//dl[@data-test='key-info']/div[6]/dd/span/span[1]/text()").get()
+        print(item)
+        yield item

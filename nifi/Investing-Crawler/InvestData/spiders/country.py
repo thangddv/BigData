@@ -38,6 +38,5 @@ class CountrySpider(scrapy.Spider):
         smlId = response.xpath("//input[@id='smlID']/@value").get()
         item['name'] = name
         item['url'] = url
-        item['smlId'] = smlId
-        print(item)
+        item['country_id'] = smlId
         yield item

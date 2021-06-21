@@ -1,24 +1,51 @@
-import { tsvParse } from  "d3-dsv";
 import { timeParse } from "d3-time-format";
+const axios = require("axios");
 
-function parseData(parse) {
-	return function(d) {
-		d.date = parse(d.date);
-		d.open = +d.open;
-		d.high = +d.high;
-		d.low = +d.low;
-		d.close = +d.close;
-		d.volume = +d.volume;
-		d.change = d.change;
-		return d;
-	};
-}
+const parseDate = timeParse("%Y-%m-%d %H:%M:%S");
 
-const parseDate = timeParse("%Y-%m-%d");
+export const searchCompany = async (company = "VIC") => {
+  try {
+    const companies = await axios.post(
+      "http://127.0.0.1:9200/company/_search",
+      {
+        from: 0,
+        size: 10,
+        query: {
+          multi_match: {
+            query: company,
+            fields: ["name", "code"],
+          },
+        },
+      }
+    );
+    if (!companies.data || !companies.data.hits || !companies.data.hits.hits)
+      return [];
+    return companies.data.hits.hits.map((item) => item._source);
+  } catch (error) {
+    console.log(error);
+    return [];
+  }
+};
 
-export function getData() {
-	const promiseMSFT = fetch("https://cdn.rawgit.com/rrag/react-stockcharts/master/docs/data/MSFT.tsv")
-		.then(response => response.text())
-		.then(data => tsvParse(data, parseData(parseDate)))
-	return promiseMSFT;
-}
+export const getData = async (company_id = 958397) => {
+  try {
+    const data = await axios.post("http://127.0.0.1:9200/stock/_search", {
+      from: 0,
+      size: 1000,
+      query: {
+        match: {
+          company_id,
+        },
+      },
+    });
+
+    return data.data.hits.hits
+      .map((item) => {
+        return { ...item._source, date: parseDate(item._source.date) };
+      })
+      .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+  } catch (error) {
+    console.log(error);
+    return [];
+  }
+};
