@@ -5,3 +5,6 @@ data/**
 fontend/node_modules/*
 fontend/package-lock.json
 *.pyc
+**/target/**
+*.jar
+**/.idea/**

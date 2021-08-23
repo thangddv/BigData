@@ -83,8 +83,15 @@ export class HomePage extends React.Component {
         </div>
         {length !== 0 && (
           <div className="chart">
-            {data.map((item) => {
-              return <Chart data={item} height={heightChart} numCol={numCol} />;
+            {data.map((item, index) => {
+              return (
+                <Chart
+                  data={item}
+                  height={heightChart}
+                  numCol={numCol}
+                  info={listSelected[index]}
+                />
+              );
             })}
           </div>
         )}

@@ -87,6 +87,7 @@ class CandleStickChartWithDarkTheme extends React.Component {
       type,
       data: initialData,
       ratio,
+      info,
     } = this.props;
 
     const margin = { left: 70, right: 70, top: 20, bottom: 30 };
@@ -135,6 +136,7 @@ class CandleStickChartWithDarkTheme extends React.Component {
     const end = xAccessor(data[Math.max(0, data.length - 150)]);
     const xExtents = [start, end];
 
+    console.log(info);
     return (
       <ChartCanvas
         height={height}
@@ -224,16 +226,12 @@ class CandleStickChartWithDarkTheme extends React.Component {
             onClick={(e) => console.log(e)}
             options={[
               {
-                yAccessor: () => null,
-                yLabel: `${ema20.type()}(${ema20.options().windowSize})`,
-                valueFill: ema20.stroke(),
-                withShape: true,
-              },
-              {
-                yAccessor: ema50.accessor(),
-                yLabel: `${ema50.type()}(${ema50.options().windowSize})`,
-                valueFill: ema50.stroke(),
-                withShape: true,
+                yAccessor: () => 0,
+                yLabel: `ID: ${info.company_id} - CODE: ${
+                  info.code
+                } - VOLUME: ${numberFormat(info.volume)}`,
+                valueFill: "#303030",
+                labelFill: "#FFF",
               },
             ]}
           />

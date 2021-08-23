@@ -31,7 +31,7 @@ export const getData = async (company_id = 958397) => {
   try {
     const data = await axios.post("http://127.0.0.1:9200/stock/_search", {
       from: 0,
-      size: 1000,
+      size: 5000,
       query: {
         match: {
           company_id,
